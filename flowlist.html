@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=320; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
+<title>processing for iOS</title>
+<script src="processing-1.0.0.min.js"></script>
+<script src="jquery-1.5.min.js"></script>
+</head>
+
+<body style="background-color:#111111">
+<canvas
+  ontouchstart="touchStart(event);"
+  ontouchmove="touchMove(event);"
+  ontouchend="touchEnd(event);"
+  ontouchcancel="touchCancel(event);"
+ id="sketch" data-processing-sources="flowlist.pde" width="320" height="480" autofocus></canvas> 
+
+<audio id="audioplayer" src="" preload="auto" autobuffer autoplay></audio>
+
+<script type="text/javascript">
+
+var echokey = "WRDLMCN9VQWEIW5HC";
+var echosearchurl = "http://developer.echonest.com/api/v4/song/search?";
+var echosearchparams = "&format=json&results=3&bucket=id:7digital&bucket=tracks&limit=true";
+var echoplayurl = "http://developer.echonest.com/api/v4/playlist/static?";
+var echoplayparams = "&format=json&results=16&type=song-radio&bucket=id:7digital&bucket=tracks&limit=true&variety=1";
+
+var spotifysearchurl = "http://ws.spotify.com/search/1/track.json?";
+
+var testid = "SOUBWQI12AB01858FB";
+
+var processingInstance;
+
+var spotifydocument;
+
+
+//var lastsongid;
+var isEchonesting = false;
+
+function setProcessingMouse(event){
+    if (!processingInstance) {  
+        processingInstance = Processing.getInstanceById('sketch');  
+    }  
+	
+	var x = event.touches[0].pageX;
+    var y = event.touches[0].pageY;
+
+    processingInstance.mouseX = x;
+    processingInstance.mouseY = y;
+};
+
+function touchStart(event) {
+    event.preventDefault();
+	setProcessingMouse(event);
+    processingInstance.mousePressed();
+};
+
+function touchMove(event) {
+    event.preventDefault();
+	setProcessingMouse(event);
+    processingInstance.mouseDragged();
+};
+
+function touchEnd(event) {
+    event.preventDefault();
+	setProcessingMouse(event);
+    processingInstance.mouseReleased();
+};
+
+function touchCancel(event) {
+    event.preventDefault();
+	setProcessingMouse(event);
+    processingInstance.mouseReleased();
+};
+
+function playSong(surl){
+    $("audio").attr('src', surl);
+}
+
+function gotSpotifyResponse(data, textStatus, jqXHR){
+    alert(textStatus);
+    alert(data);
+    alert(data.info);
+    $.each(data, function(i, t){
+        alert(t.href);
+    });
+    //alert(data);
+}
+
+/*
+* Code taken from playlistify:
+* http://playlistify.org/pages_tools.php
+* Thank you so much for this great service!
+*/
+function playlistifyBookmarklet(doc, sngs){
+        var form = doc.createElement('form'); 
+        form.setAttribute('method', 'post');  
+        form.setAttribute('enctype', 'multipart/form-data'); 
+        form.setAttribute('action', 'http://playlistify.org/#bakeplaylist'); 
+        var hiddenField = doc.createElement('input'); 
+        hiddenField.setAttribute('type', 'hidden'); 
+        hiddenField.setAttribute('name', 'playlistdata'); 
+        hiddenField.setAttribute('value', sngs); 
+        form.appendChild(hiddenField); 
+        var hiddenField2 = doc.createElement('input'); 
+        hiddenField2.setAttribute('type', 'hidden'); 
+        hiddenField2.setAttribute('name', 'bookmarklet'); 
+        hiddenField2.setAttribute('value', true); 
+        form.appendChild(hiddenField2); 
+        var hiddenField3 = doc.createElement('input'); 
+        hiddenField3.setAttribute('type', 'hidden'); 
+        hiddenField3.setAttribute('name', 'sourceurl'); 
+        hiddenField3.setAttribute('value', encodeURIComponent(location.href)); 
+        form.appendChild(hiddenField3); 
+        var hiddenField4 = doc.createElement('input'); 
+        hiddenField4.setAttribute('type', 'hidden'); 
+        hiddenField4.setAttribute('name', 'playlisttitle'); 
+        hiddenField4.setAttribute('value', 'flowlist #1'); 
+        form.appendChild(hiddenField4); 
+        doc.body.appendChild(form); 
+        form.submit(); 
+}
+
+function exportPlaylistifySongs(sngs){
+    //alert(sngs);
+    newwindow2 = window.open('', 'name', 'height=800,width=1024,scrollbars=yes');
+    playlistifyBookmarklet(newwindow2.document, sngs);
+}
+
+function exportXPSFSongs(sngs){
+    newwindow2 = window.open('', 'name', 'height=300,width=450,scrollbars=yes');
+    var tmp = newwindow2.document;
+    /*var songs = sngs.split(' ; ');
+    for(var i = 0; i < songs.length; i++){
+        var parts = songs[i].split(' , ');
+        var arts = parts[0];
+        var tits = parts[1];
+        var call = spotifysearchurl + "q=" + escape(arts + " " + tits); 
+        alert(call);
+        $.getJSON(call, gotSpotifyResponse());
+    }  */
+    tmp.write(sngs);
+    tmp.close();
+}
+
+function exportTxtSongs(songs) {
+	newwindow2=window.open('','name','height=300,width=450,scrollbars=yes');
+	var tmp = newwindow2.document;
+	tmp.write(songs);
+	tmp.close();
+}
+
+function gotSongID(data, textStatus, jqXHR){
+    var sid = "";
+    $.each(data.response.songs, function(i, song){
+        sid = song.id;
+    });
+    
+    //alert(sid);
+    //lastsongid = sid;
+    
+    unfoldSong(sid);
+}
+
+function gotSong(data, textStatus, jqXHR){
+    //alert(textStatus);
+    //alert(data.response.songs[0].title);
+    var al = "";
+    $.each(data.response.songs, function(i, song){
+        al = al + song.title + '|' + song.artist_name + '|';
+        al = al + song.id + '|';
+        $.each(song.tracks, function(i, track){
+            al = al + track.release_image + '|';
+            al = al + track.preview_url + '|';
+        });
+        al = al + '^';
+        //alert(song.title);
+    });
+    
+    if (!processingInstance) {  
+        processingInstance = Processing.getInstanceById('sketch');  
+    }  
+
+    //alert(al);
+    
+    isEchonesting = false;
+    
+    processingInstance.gotSongsP(al, "");
+}
+
+function unfoldSong(songid){
+    if(isEchonesting){
+        return false;
+    }
+    isEchonesting = true;
+    
+    //lastsongid = songid;
+    var call = echoplayurl + "api_key=" + echokey + echoplayparams + "&song_id=" + songid;
+    //alert(call);
+    $.getJSON(call, gotSong);
+    //$.getJSON(echourl + "api_key=" + echokey + "&format=json&artist=Radiohead&results=5&type=song-radio&bucket=tracks&bucket=id:7digital&limit=true", gotSong);
+}
+
+function findSong(songname){
+    var call = echosearchurl + "api_key=" + echokey + echosearchparams + "&combined=" + songname;
+    //alert(call);
+    $.getJSON(call, gotSong);
+}
+
+
+//findSong("muse+citizen+erased");
+</script>
+
+<p style="color:#999999; font-family:sans-serif; font-size:12px">flowlist was created for the <a href="http://nyc.musichackday.org/" style="color:#777777">Music Hackday NYC</a>, February 2011
+by <a href="http://www.twitter.com/dominikus" style="color:#777777">Dominikus Baur</a>.
+Powered by <a href="http://the.echonest.com" style="color:#777777">the echonest</a> and
+<a href="http://7digital.net" style="color:#777777">7digital</a>. Playlist conversion by <a href="http://playlistify.org/" style="color:#777777">playlistify</a>.</p>
+</body>
+</html>
