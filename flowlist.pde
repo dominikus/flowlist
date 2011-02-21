@@ -361,7 +361,7 @@ void exportPlaylistToPlaylistify(){
   String jspl = '';
   for(int i = 0; i < playlist.size(); i++){
     Item i1 = (Item)playlist.get(i);
-    jspl = jspl + i1.artist + " - " + i1.title + "\n";
+    jspl = jspl + i1.artist + " " + i1.title + "\n";
   }
   
   //javascript call
