@@ -38,14 +38,18 @@ Point flow_logo_pos;
 PImage welcome_blurb;
 PImage content_providers;
 
+float waitring_rot = 0;
+PImage waitring;
+
 //
 // Export images
 //
 Button txt_export;
 Button xpsf_export;
 Button playlistify_export;
+Button groovesharpk_export;
 
-boolean preview_plays = true;
+boolean preview_plays = false;
 
 float playlistoffset = 0;
 int playlistitemwidth = 180;
@@ -201,7 +205,7 @@ class Button{
 }
 
 
-void drawPlaylistItem(Item it, float startx){
+void drawPlaylistItem(Item it, float startx, boolean active){
   pushMatrix();
   translate(startx, height - it.h);
   
@@ -232,6 +236,11 @@ void drawPlaylistItem(Item it, float startx){
   textFont(myfont, 24);
   text(it.title.toUpperCase(),it.imgsize + 5, font_verticaloffset + 20);
 
+  if(!active){
+    fill(255,255,255,128);
+    rect(0, -5, it.iw, it.h + 10);
+  }
+  
   popMatrix();
 }
 
@@ -308,9 +317,16 @@ void drawPlaylist(){
   pushMatrix();
   translate(playlistoffset, 0);
   
+  int realsongsleft = playlist.size() - songsleft;
+  
   for(int i = 0; i < playlist.size(); i++){
     Item i1 = (Item)playlist.get(i);
-    drawPlaylistItem(i1, i * playlistitemwidth);
+    
+    if(i <= realsongsleft)
+      drawPlaylistItem(i1, i * playlistitemwidth, true);
+    else
+      drawPlaylistItem(i1, i * playlistitemwidth, false);
+      
     stroke(255,255,255);
     fill(255,255,255);
     rect(i * playlistitemwidth, height - (itemheight + 5), 5, itemheight + 10);
@@ -343,6 +359,7 @@ void drawPlaylistExportMenu(){
     //playlistify doesn't work for less than three songs
     playlistify_export.drawButton();
   }
+  grooveshark_export.drawButton();
 }
 
 void exportPlaylistToTxt(){
@@ -368,6 +385,17 @@ void exportPlaylistToPlaylistify(){
   exportPlaylistifySongs(jspl);
 }
 
+void exportPlaylistToGrooveshark(){
+  String jspl = '';
+  for(int i = 0; i < playlist.size(); i++){
+    Item i1 = (Item)playlist.get(i);
+    jspl = jspl + i1.artist + " - " + i1.title + "\n";
+  }
+  
+  //javascript call
+  exportGroovesharkSongs(jspl);
+  
+}
 
 void exportPlaylistToSpotify(){
   String jspl = '';
@@ -429,13 +457,18 @@ void setup(){
   
   txt_export = new Button("img/txt_button.png", "img/txt_button_over.png");
  // txt_export.pos = new Point(width - itemwidth, height - itemheight);
-  txt_export.pos = new Point(canvaswidth - 120, canvasheight - itemheight + 3);
+  txt_export.pos = new Point(canvaswidth - 180, canvasheight - itemheight + 3);
   
   //xpsf_export = new Button("img/xpsf_button.png", "img/xpsf_button_over.png");
   //xpsf_export.pos = new Point(canvaswidth - 140, canvasheight - itemheight + 3);
   
   playlistify_export = new Button("img/playlistify_button.png", "img/playlistify_button_over.png");
   playlistify_export.pos = new Point(canvaswidth - 60, canvasheight - itemheight + 3);
+  
+  grooveshark_export = new Button("img/grooveshark_button.png", "img/grooveshark_button_over.png");
+  grooveshark_export.pos = new Point(canvaswidth - 120, canvasheight - itemheight + 3);
+  
+  waitring = loadImage("img/waitring.png");
   
   /*Item i1 = new Item(300,300, itemwidth, itemheight);
   items.add(i1);*/
@@ -538,7 +571,18 @@ void draw(){
     //hover over playlist
     drawPlaylistExportMenu();  
   }
-    
+  
+  if(isQueryingTinySongs.equals("isGoing")){
+    //spinning part:
+    pushMatrix();
+    translate(canvaswidth - 25, canvasheight - 25);
+    rotate(waitring_rot);
+    translate(-(canvaswidth - 25), -(canvasheight - 25));
+    image(waitring, (canvaswidth - 50), (canvasheight - 50)); 
+    popMatrix();
+    waitring_rot += 0.04f;
+  }
+  
   /*text(console, 0,30);
   Point cmouse = transformToCanvas(new Point(mouseX, mouseY));
   text(cmouse.x + ", " + cmouse.y, 0, 60);*/
@@ -650,6 +694,8 @@ void mouseReleased(){
     exportPlaylistToTxt();
   /*} else if(xpsf_export.mouseIsInside()){
     exportPlaylistToXPSF();*/
+  } else if(grooveshark_export.mouseIsInside()){
+    exportPlaylistToGrooveshark();
   } else if(playlistify_export.mouseIsInside()){
     exportPlaylistToPlaylistify();
   }

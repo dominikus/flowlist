@@ -1,8 +1,16 @@
 <!DOCTYPE html>
+
+<!--
+    flowlist
+    v 1.01
+    
+    + added Grooveshark support via tinysong
+    
+-->
 <html>
 <head>
 <meta name="viewport" content="width=320; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
-<title>processing for iOS</title>
+<title>flowlist 1.01</title>
 <script src="processing-1.0.0.min.js"></script>
 <script src="jquery-1.5.min.js"></script>
 </head>
@@ -16,6 +24,8 @@
  id="sketch" data-processing-sources="flowlist.pde" width="320" height="480" autofocus></canvas> 
 
 <audio id="audioplayer" src="" preload="auto" autobuffer autoplay></audio>
+
+<div style="position:absolute; top:0px; left:1024px; color:#FFFFFF" class="gs_widget"></div>
 
 <script type="text/javascript">
 
@@ -127,6 +137,85 @@ function exportPlaylistifySongs(sngs){
     playlistifyBookmarklet(newwindow2.document, sngs);
 }
 
+var grooveshark_ids;
+var exportsongs;
+var songsleft = 0;
+var isQueryingTinySongs = "hasStopped";
+
+function startGroovesharkPlayer(){
+    //alert("grooveshark player: " + grooveshark_ids);
+    var code = "<object width=\"250\" height=\"400\"><param name=\"movie\" value=\"http:\/\/listen.grooveshark.com\/widget.swf\" /><param name=\"wmode\" value=\"window\" />";
+    code = code + "<param name=\"allowScriptAccess\" value=\"always\" /><param name=\"flashvars\" value=\"hostname=cowbell.grooveshark.com&songIDs=";
+    var songids = grooveshark_ids.split('\n');
+    
+    //add songs to widget (html params)
+    for(var i = 0; i < songids.length; i++){
+        if(songids[i])
+            code = code + songids[i] + ',';
+    }
+    code = code + "&style=metal&bbg=000000&bfg=666666&bt=FFFFFF&bth=000000&pbg=FFFFFF&pbgh=666666&pfg=000000&pfgh=FFFFFF&si=FFFFFF&lbg=FFFFFF&lbgh=666666&lfg=000000&lfgh=FFFFFF&sb=FFFFFF&sbh=666666&p=0\" /> ";
+    code = code + "<embed src=\"http:\/\/listen.grooveshark.com\/widget.swf\" type=\"application/x-shockwave-flash\" width=\"250\" height=\"400\" flashvars=\"hostname=cowbell.grooveshark.com&songIDs=";
+    
+    //add songs to widget (flash params)
+    for(var i = 0; i < songids.length; i++){
+        if(songids[i])
+            code = code + songids[i] + ',';
+    }
+    code = code + "&style=metal&bbg=000000&bfg=666666&bt=FFFFFF&bth=000000&pbg=FFFFFF&pbgh=666666&pfg=000000&pfgh=FFFFFF&si=FFFFFF&lbg=FFFFFF&lbgh=666666&lfg=000000&lfgh=FFFFFF&sb=FFFFFF&sbh=666666&p=0\" allowScriptAccess=\"always\" wmode=\"window\" />";
+    code = code + "</object>";
+    $('.gs_widget').append(code);
+    
+    isQueryingTinySongs = "hasStopped";
+    songsleft = 0;
+}
+
+function startQueryingTinySongs(data, textStatus, jqXHR){
+    if(data){
+        //alert("status: " + textStatus);
+        grooveshark_ids = grooveshark_ids + data.SongID + '\n';
+    } else {
+        grooveshark_ids = "";
+    }
+    
+    //take the next song
+    var songs = exportsongs.split('\n');
+    if(songs.length > 0){
+        var query = "";
+        exportsongs = "";
+        
+        for(var i = 0; i < songs.length; i++){
+            if(songs[i] && !query){
+                query = songs[i];
+            } else {
+                exportsongs = exportsongs + songs[i] + '\n';
+            }
+        }
+    
+        //query it
+        songsleft--;
+        if(query){
+            isQueryingTinySongs = "isGoing";
+            var url = "http://tinysong.com/b/";
+            url = url + encodeURIComponent(query) + "&format=json";
+
+            var code = "$.getJSON(\"" + url + "\", startQueryingTinySongs);";
+            //alert(code);
+            var t = setTimeout(code, 1001);
+        } else {
+            startGroovesharkPlayer();
+        }
+    } else {
+        startGroovesharkPlayer();
+    }
+}
+
+function exportGroovesharkSongs(sngs){
+    exportsongs = sngs;
+    songsleft = exportsongs.split('\n').length;
+    isQueryingTinySongs = "isGoing";
+    startQueryingTinySongs(undefined, "", undefined);
+}
+
 function exportXPSFSongs(sngs){
     newwindow2 = window.open('', 'name', 'height=300,width=450,scrollbars=yes');
     var tmp = newwindow2.document;
@@ -188,6 +277,8 @@ function gotSong(data, textStatus, jqXHR){
     processingInstance.gotSongsP(al, "");
 }
 
+var lastechonestcall = "";
+
 function unfoldSong(songid){
     if(isEchonesting){
         return false;
@@ -196,6 +287,7 @@ function unfoldSong(songid){
     
     //lastsongid = songid;
     var call = echoplayurl + "api_key=" + echokey + echoplayparams + "&song_id=" + songid;
+    lastechonestcall = call;
     //alert(call);
     $.getJSON(call, gotSong);
     //$.getJSON(echourl + "api_key=" + echokey + "&format=json&artist=Radiohead&results=5&type=song-radio&bucket=tracks&bucket=id:7digital&limit=true", gotSong);
@@ -204,6 +296,7 @@ function unfoldSong(songid){
 function findSong(songname){
     var call = echosearchurl + "api_key=" + echokey + echosearchparams + "&combined=" + songname;
     //alert(call);
+    lastechonestcall = call;
     $.getJSON(call, gotSong);
 }
 
@@ -211,9 +304,10 @@ function findSong(songname){
 //findSong("muse+citizen+erased");
 </script>
 
-<p style="color:#999999; font-family:sans-serif; font-size:12px">flowlist was created for the <a href="http://nyc.musichackday.org/" style="color:#777777">Music Hackday NYC</a>, February 2011
+<p style="color:#999999; font-family:sans-serif; font-size:12px">This is flowlist v1.01. It was originally created for the <a href="http://nyc.musichackday.org/" style="color:#777777">Music Hackday NYC</a>, February 2011
 by <a href="http://www.twitter.com/dominikus" style="color:#777777">Dominikus Baur</a>.
 Powered by <a href="http://the.echonest.com" style="color:#777777">the echonest</a> and
-<a href="http://7digital.net" style="color:#777777">7digital</a>. Playlist conversion by <a href="http://playlistify.org/" style="color:#777777">playlistify</a>.</p>
+<a href="http://7digital.net" style="color:#777777">7digital</a>.<br/> Playlist conversion by <a href="http://playlistify.org/" style="color:#777777">playlistify</a>.
+Grooveshark "API" by <a href="http://tinysong.com" style="color:#777777">tinysong</a>. Music widget by <a href="http://www.grooveshark.com" style="color:#777777">Grooveshark</a>.</p>
 </body>
 </html>
