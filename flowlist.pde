@@ -322,7 +322,7 @@ void drawPlaylist(){
   for(int i = 0; i < playlist.size(); i++){
     Item i1 = (Item)playlist.get(i);
     
-    if(i <= realsongsleft)
+    if(i < realsongsleft)
       drawPlaylistItem(i1, i * playlistitemwidth, true);
     else
       drawPlaylistItem(i1, i * playlistitemwidth, false);
@@ -389,7 +389,7 @@ void exportPlaylistToGrooveshark(){
   String jspl = '';
   for(int i = 0; i < playlist.size(); i++){
     Item i1 = (Item)playlist.get(i);
-    jspl = jspl + i1.artist + " - " + i1.title + "\n";
+    jspl = jspl + "\"" + i1.artist + "\" - \"" + i1.title + "\"\n";
   }
   
   //javascript call

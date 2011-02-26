@@ -2,7 +2,7 @@
 
 <!--
     flowlist
-    v 1.01
+    v 1.011
     
     + added Grooveshark support via tinysong
     
@@ -10,7 +10,7 @@
 <html>
 <head>
 <meta name="viewport" content="width=320; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
-<title>flowlist 1.01</title>
+<title>flowlist 1.011</title>
 <script src="processing-1.0.0.min.js"></script>
 <script src="jquery-1.5.min.js"></script>
 </head>
@@ -163,16 +163,20 @@ function startGroovesharkPlayer(){
     }
     code = code + "&style=metal&bbg=000000&bfg=666666&bt=FFFFFF&bth=000000&pbg=FFFFFF&pbgh=666666&pfg=000000&pfgh=FFFFFF&si=FFFFFF&lbg=FFFFFF&lbgh=666666&lfg=000000&lfgh=FFFFFF&sb=FFFFFF&sbh=666666&p=0\" allowScriptAccess=\"always\" wmode=\"window\" />";
     code = code + "</object>";
-    $('.gs_widget').append(code);
+    $('.gs_widget').html(code);
     
     isQueryingTinySongs = "hasStopped";
     songsleft = 0;
 }
 
-function startQueryingTinySongs(data, textStatus, jqXHR){
+function startQueryingTinySongs(data){
     if(data){
         //alert("status: " + textStatus);
-        grooveshark_ids = grooveshark_ids + data.SongID + '\n';
+		//alert(data);
+		if(data.status.http_code > 0){
+		    var consplit = data.contents.split(";");
+            grooveshark_ids = grooveshark_ids + consplit[1] + '\n';
+        }
     } else {
         grooveshark_ids = "";
     }
@@ -195,12 +199,13 @@ function startQueryingTinySongs(data, textStatus, jqXHR){
         songsleft--;
         if(query){
             isQueryingTinySongs = "isGoing";
-            var url = "http://tinysong.com/b/";
+			var phpurl = "ba-simple-proxy.php?url="
+            var url = phpurl + "http://tinysong.com/b/";
             url = url + encodeURIComponent(query) + "&format=json";
 
             var code = "$.getJSON(\"" + url + "\", startQueryingTinySongs);";
             //alert(code);
-            var t = setTimeout(code, 1001);
+            var t = setTimeout(code, 3100);
         } else {
             startGroovesharkPlayer();
         }
@@ -213,7 +218,7 @@ function exportGroovesharkSongs(sngs){
     exportsongs = sngs;
     songsleft = exportsongs.split('\n').length;
     isQueryingTinySongs = "isGoing";
-    startQueryingTinySongs(undefined, "", undefined);
+    startQueryingTinySongs(undefined);
 }
 
 function exportXPSFSongs(sngs){
@@ -304,7 +309,7 @@ function findSong(songname){
 //findSong("muse+citizen+erased");
 </script>
 
-<p style="color:#999999; font-family:sans-serif; font-size:12px">This is flowlist v1.01. It was originally created for the <a href="http://nyc.musichackday.org/" style="color:#777777">Music Hackday NYC</a>, February 2011
+<p style="color:#999999; font-family:sans-serif; font-size:12px">This is flowlist v1.011. It was originally created for the <a href="http://nyc.musichackday.org/" style="color:#777777">Music Hackday NYC</a>, February 2011
 by <a href="http://www.twitter.com/dominikus" style="color:#777777">Dominikus Baur</a>.
 Powered by <a href="http://the.echonest.com" style="color:#777777">the echonest</a> and
 <a href="http://7digital.net" style="color:#777777">7digital</a>.<br/> Playlist conversion by <a href="http://playlistify.org/" style="color:#777777">playlistify</a>.
